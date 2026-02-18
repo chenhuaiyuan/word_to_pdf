@@ -4,12 +4,12 @@ require_relative 'word_to_pdf/install_check'
 
 module WordToPdf
   
-  def self.convert(input_docx_file_path, output_pdf_file_path, values_hash = {})
+  def self.convert(input_docx_file_path, output_pdf_file_path, values_hash = {}, is_text = true)
     # Checking if the soffice is avaliable or not
     InstallCheck.ensure_office_installed!
 
     temp_dir = create_temp_dir
-    filled_docx = fill_template(input_docx_file_path, values_hash, temp_dir)
+    filled_docx = fill_template(input_docx_file_path, values_hash, temp_dir, is_text)
     pdf_path = convert_to_pdf(filled_docx, temp_dir)
 
     move_pdf_to_destination(pdf_path, output_pdf_file_path)
@@ -24,12 +24,22 @@ module WordToPdf
     temp_dir
   end
 
-  def self.fill_template(input_docx_file_path, values_hash, temp_dir)
+  def self.fill_template(input_docx_file_path, values_hash, temp_dir, is_text = true)
     doc = Docx::Document.open(input_docx_file_path)
 
-    doc.paragraphs.each do |p|
-      values_hash.each do |key, value|
-        p.text = p.text.gsub("{{#{key}}}", value.to_s)
+    if is_text
+      doc.paragraphs.each do |p|
+        values_hash.each do |key, value|
+          p.text = p.text.gsub("{{#{key}}}", value.to_s)
+        end
+      end
+    elsif
+      doc.paragraphs.each do |p|
+        p.each_text_run do |tr|
+          values_hash.each do |key, value|
+            tr.substitute("{{#{key}}}", value.to_s)
+          end
+        end
       end
     end
 
